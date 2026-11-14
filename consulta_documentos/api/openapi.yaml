@@ -1,0 +1,80 @@
+openapi: "3.0.1"
+info:
+  title: "Unipaz Repositorio - API consulta_documentos"
+  version: "0.1.0"
+  description: >
+    API PÚBLICA para consultar el Repositorio Digital CDI UNIPAZ. No requiere
+    autenticación; protegida por throttling a nivel de stage.
+
+# Placeholders (${...}) resueltos por CDK al importar la spec con SpecRestApi.
+components:
+  schemas:
+    HelloResponse:
+      type: object
+      properties:
+        message: { type: string }
+        service: { type: string }
+        database:
+          type: object
+          properties:
+            name: { type: string }
+            server_time: { type: string }
+            version: { type: string }
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+
+# Respuestas que genera API Gateway (429 de throttling, 5xx propios) con
+# headers CORS, para que el navegador vea el error real y no un "error de CORS".
+x-amazon-apigateway-gateway-responses:
+  DEFAULT_4XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+      gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type'"
+  DEFAULT_5XX:
+    responseParameters:
+      gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+      gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type'"
+
+paths:
+  /hello:
+    get:
+      summary: "Hola mundo público: valida la conexión a Aurora"
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${region}:lambda:path/2015-03-31/functions/${lambda_arn}/invocations"
+        passthroughBehavior: "when_no_match"
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HelloResponse" }
+        "429":
+          description: "Throttling (límite de requests excedido)"
+        "503":
+          description: "La base de datos se está reanudando (auto-pause); reintentar"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "500":
+          description: "Error interno"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    options:
+      summary: "CORS preflight (manejado por la Lambda)"
+      x-amazon-apigateway-integration:
+        type: "aws_proxy"
+        httpMethod: "POST"
+        uri: "arn:aws:apigateway:${region}:lambda:path/2015-03-31/functions/${lambda_arn}/invocations"
+        passthroughBehavior: "when_no_match"
+      responses:
+        "200":
+          description: "CORS preflight"

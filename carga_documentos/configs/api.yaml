@@ -1,0 +1,17 @@
+# Configuración de la API carga_documentos (requiere login con Cognito).
+
+api:
+  # Orígenes permitidos para CORS. "*" mientras no existan los dominios de
+  # CloudFront; tras el primer deploy del frontend, reemplazar por la URL de
+  # CloudFront + http://localhost:5173 y redeployar.
+  cors_allow_origins:
+    - "*"
+
+  # Throttling a nivel de stage (todas las rutas).
+  throttling:
+    rate_limit: 5    # requests por segundo (steady-state)
+    burst_limit: 5   # pico máximo de requests concurrentes
+
+  # Lambda (API Gateway corta a los 29 s).
+  timeout_seconds: 25
+  memory_mb: 256
